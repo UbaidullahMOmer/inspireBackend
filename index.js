@@ -38,8 +38,8 @@ router.post("/create-checkout-session", async (req, res) => {
     payment_method_types: ["card"],
     line_items: lineItems,
     mode: "payment",
-    success_url: "https://inspire-frontend-spasj1oyi-ubaidullahmomers-projects.vercel.app/success",
-    cancel_url: "https://inspire-frontend-spasj1oyi-ubaidullahmomers-projects.vercel.app/cancel",
+    success_url: "https://inspireweb.vercel.app/success",
+    cancel_url: "https://inspireweb.vercel.app/cancel",
   });
   res.json({ id: session.id });
 });
