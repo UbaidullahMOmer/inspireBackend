@@ -1,4 +1,5 @@
 const express = require("express");
+const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const stripe = require("stripe")("sk_test_51P7GGR2KcbZATXLfrprjkc3qd2J2oA9GuARxoXZDimvqqZCFQLeWfacRqpJRQwj6MgFrjVFLKjzycH5BsarpVvio00hVUMNzm3");
 
@@ -6,6 +7,7 @@ const app = express();
 const port = 8000;
 
 // Middleware
+app.use(cors()); // Enable CORS
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
