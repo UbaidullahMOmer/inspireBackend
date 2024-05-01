@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const { db } = require("./firebase/firebase");
-const { collection, addDoc } = require("firebase/firestore");
+
 const stripe = require("stripe")(
   "sk_test_51P7GGR2KcbZATXLfrprjkc3qd2J2oA9GuARxoXZDimvqqZCFQLeWfacRqpJRQwj6MgFrjVFLKjzycH5BsarpVvio00hVUMNzm3"
 );
@@ -21,12 +21,12 @@ const router = express.Router();
 
 router.post("/create-checkout-session", async (req, res) => {
   const data = req.body;
-  if (!data?.productsData || !Array.isArray(data.productsData)) {
+  if (!data?.productsData || !Array.isArray(data?.productsData)) {
     return res
       .status(400)
       .json({ error: "Products data is missing or invalid" });
   }
-  const lineItems = data.productsData.map((product) => ({
+  const lineItems = data?.productsData.map((product) => ({
     price_data: {
       currency: "usd",
       product_data: {
@@ -37,43 +37,53 @@ router.post("/create-checkout-session", async (req, res) => {
     },
     quantity: product?.qty,
   }));
-  try {
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: lineItems,
-      mode: "payment",
-      success_url: "http://localhost:3001/success",
-      cancel_url: "https://inspireweb.vercel.app/cancel",
-    });
-    res.json({ id: session.id });
-  } catch (error) {
-    console.error("Error creating checkout session:", error);
-    res.status(500).json({ error: "Failed to create checkout session" });
-  }
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ["card"],
+    line_items: lineItems,
+    mode: "payment",
+    success_url: "http://localhost:3001/success",
+    cancel_url: "https://inspireweb.vercel.app/cancel",
+  });
+  res.json({ id: session.id });
 });
 
-// Handle order submission
 const handleSubmit = async (data) => {
   try {
     const orderRef = collection(db, "orders");
     await addDoc(orderRef, data);
-    console.log("Order submitted successfully:", data);
   } catch (error) {
-    console.error("Error submitting order:", error);
-    throw new Error("Failed to submit order");
+    console.error("Error adding order to database:", error);
   }
 };
 
-// Payment success route
-app.post("/success", async (req, res) => {
-  const orderData = req.body;
+// Webhook Route
+app.post("/webhook", async (req, res) => {
+  const payload = req.body;
+  const secret = process.env.STRIPE_WEBHOOK_SECRET; // Replace with your secret
+
   try {
-    await handleSubmit(orderData);
-    res.status(200).send("Order submitted successfully");
-  } catch (error) {
-    res.status(500).send("Failed to submit order");
+    const event = stripe.webhooks.constructEvent(
+      payload,
+      req.headers["stripe-signature"],
+      secret
+    );
+
+    if (event.type === "payment_intent.succeeded") {
+      const paymentIntent = event.data.object;
+      // Call handleSubmit with relevant data
+      await handleSubmit(req.body.data);
+      res.sendStatus(200); // Acknowledge successful reception
+    } else {
+      console.log(`Unhandled webhook event: ${event.type}`);
+      res.sendStatus(200); // Still acknowledge even for unhandled events
+    }
+  } catch (err) {
+    console.error("Webhook Error:", err);
+    res.sendStatus(400); // Indicate an error
   }
 });
+
+app.use("/", router);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
