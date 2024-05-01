@@ -1,7 +1,9 @@
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
-const stripe = require("stripe")("sk_test_51P7GGR2KcbZATXLfrprjkc3qd2J2oA9GuARxoXZDimvqqZCFQLeWfacRqpJRQwj6MgFrjVFLKjzycH5BsarpVvio00hVUMNzm3");
+const stripe = require("stripe")(
+  "sk_test_51P7GGR2KcbZATXLfrprjkc3qd2J2oA9GuARxoXZDimvqqZCFQLeWfacRqpJRQwj6MgFrjVFLKjzycH5BsarpVvio00hVUMNzm3"
+);
 
 const app = express();
 const port = 8000;
@@ -17,7 +19,7 @@ const router = express.Router();
 
 router.post("/create-checkout-session", async (req, res) => {
   const { products } = req.body;
-  console.log(products)
+  console.log(products);
   if (!products || !Array.isArray(products)) {
     return res
       .status(400)
