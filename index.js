@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const { db } = require("./firebase/firebase");
+const { collection, addDoc } = require("firebase/firestore");
 const stripe = require("stripe")(
   "sk_test_51P7GGR2KcbZATXLfrprjkc3qd2J2oA9GuARxoXZDimvqqZCFQLeWfacRqpJRQwj6MgFrjVFLKjzycH5BsarpVvio00hVUMNzm3"
 );
@@ -18,14 +20,13 @@ app.use(cookieParser());
 const router = express.Router();
 
 router.post("/create-checkout-session", async (req, res) => {
-  const { products } = req.body;
-  console.log(products);
-  if (!products || !Array.isArray(products)) {
+  const data = req.body;
+  if (!data?.productsData || !Array.isArray(data.productsData)) {
     return res
       .status(400)
       .json({ error: "Products data is missing or invalid" });
   }
-  const lineItems = products.map((product) => ({
+  const lineItems = data.productsData.map((product) => ({
     price_data: {
       currency: "usd",
       product_data: {
@@ -36,17 +37,43 @@ router.post("/create-checkout-session", async (req, res) => {
     },
     quantity: product?.qty,
   }));
-  const session = await stripe.checkout.sessions.create({
-    payment_method_types: ["card"],
-    line_items: lineItems,
-    mode: "payment",
-    success_url: "https://localhost:3001/success",
-    cancel_url: "https://inspireweb.vercel.app/cancel",
-  });
-  res.json({ id: session.id });
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: lineItems,
+      mode: "payment",
+      success_url: "http://localhost:3001/success",
+      cancel_url: "https://inspireweb.vercel.app/cancel",
+    });
+    res.json({ id: session.id });
+  } catch (error) {
+    console.error("Error creating checkout session:", error);
+    res.status(500).json({ error: "Failed to create checkout session" });
+  }
 });
 
-app.use("/", router);
+// Handle order submission
+const handleSubmit = async (data) => {
+  try {
+    const orderRef = collection(db, "orders");
+    await addDoc(orderRef, data);
+    console.log("Order submitted successfully:", data);
+  } catch (error) {
+    console.error("Error submitting order:", error);
+    throw new Error("Failed to submit order");
+  }
+};
+
+// Payment success route
+app.post("/success", async (req, res) => {
+  const orderData = req.body;
+  try {
+    await handleSubmit(orderData);
+    res.status(200).send("Order submitted successfully");
+  } catch (error) {
+    res.status(500).send("Failed to submit order");
+  }
+});
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
