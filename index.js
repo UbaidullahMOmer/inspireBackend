@@ -40,7 +40,7 @@ router.post("/create-checkout-session", async (req, res) => {
     payment_method_types: ["card"],
     line_items: lineItems,
     mode: "payment",
-    success_url: "https://inspireweb.vercel.app/success",
+    success_url: "https://localhost:3001/success",
     cancel_url: "https://inspireweb.vercel.app/cancel",
   });
   res.json({ id: session.id });
