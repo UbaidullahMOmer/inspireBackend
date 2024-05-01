@@ -41,47 +41,18 @@ router.post("/create-checkout-session", async (req, res) => {
     payment_method_types: ["card"],
     line_items: lineItems,
     mode: "payment",
-    success_url: "http://localhost:3001/success",
+    success_url: "https://inspireweb.vercel.app/success",
     cancel_url: "https://inspireweb.vercel.app/cancel",
   });
   res.json({ id: session.id });
 });
-
 const handleSubmit = async (data) => {
   try {
     const orderRef = collection(db, "orders");
     await addDoc(orderRef, data);
   } catch (error) {
-    console.error("Error adding order to database:", error);
   }
 };
-
-// Webhook Route
-app.post("/webhook", async (req, res) => {
-  const payload = req.body;
-  const secret = process.env.STRIPE_WEBHOOK_SECRET; // Replace with your secret
-
-  try {
-    const event = stripe.webhooks.constructEvent(
-      payload,
-      req.headers["stripe-signature"],
-      secret
-    );
-
-    if (event.type === "payment_intent.succeeded") {
-      const paymentIntent = event.data.object;
-      // Call handleSubmit with relevant data
-      await handleSubmit(req.body.data);
-      res.sendStatus(200); // Acknowledge successful reception
-    } else {
-      console.log(`Unhandled webhook event: ${event.type}`);
-      res.sendStatus(200); // Still acknowledge even for unhandled events
-    }
-  } catch (err) {
-    console.error("Webhook Error:", err);
-    res.sendStatus(400); // Indicate an error
-  }
-});
 
 app.use("/", router);
 
