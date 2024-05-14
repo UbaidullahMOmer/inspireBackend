@@ -14,12 +14,12 @@ app.use(cookieParser());
 const router = express.Router();
 router.post("/create-checkout-session", async (req, res) => {
   const data = req.body;
-  if (!data?.productsData || !Array.isArray(data?.productsData)) {
+  if (!data?.products || !Array.isArray(data?.products)) {
     return res
       .status(400)
       .json({ error: "Products data is missing or invalid" });
   }
-  const lineItems = data?.productsData.map((product) => ({
+  const lineItems = data?.products.map((product) => ({
     price_data: {
       currency: "usd",
       product_data: {
@@ -60,7 +60,7 @@ app.post("/webhook", async (req, res) => {
       const paymentIntent = event.data.object;
       await handleSubmit({
         orderId: paymentIntent.id,
-        products: req.body.data?.productsData,
+        products: req.body.data?.products,
       });
       res.sendStatus(200);
     } else {
